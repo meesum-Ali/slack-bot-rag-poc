@@ -31,7 +31,7 @@ DB_DSN = {
     "port": int(os.getenv("PGPORT", 5432)),
 }
 
-MODEL_NAME = "gemini-embedding-exp-03-07"           # free tier
+MODEL_NAME = "text-embedding-004"           # free tier
 TARGET_DIM = 768                                    # reduce footprint (opt.)
 BATCH = 200                                         # max per free-tier call
 
@@ -58,36 +58,46 @@ def embed_all(texts: List[str]) -> List[List[float]]:
     return out
 
 def ingest(path: str):
-    with open(path, "r") as f:
-        docs = [l.strip() for l in f if l.strip()]
+    try:
+        with open(path, "r") as f:
+            docs = [l.strip() for l in f if l.strip()]
+    except FileNotFoundError:
+        print(f"❌ Error: File not found at path: {path}")
+        return
 
     vecs = embed_all(docs)
 
-    with psycopg2.connect(**DB_DSN) as conn, conn.cursor() as cur:
-        execute_values(
-            cur,
-            "INSERT INTO docs (text, embedding) VALUES %s",
-            list(zip(docs, vecs))
-        )
-        conn.commit()
-    print(f"✅  Inserted {len(docs)} rows")
+    try:
+        with psycopg2.connect(**DB_DSN) as conn, conn.cursor() as cur:
+            execute_values(
+                cur,
+                "INSERT INTO docs (text, embedding) VALUES %s",
+                list(zip(docs, vecs))
+            )
+            conn.commit()
+        print(f"✅  Inserted {len(docs)} rows")
+    except psycopg2.Error as e:
+        print(f"❌ Error connecting to or writing to the database: {e}")
 
 def search(query: str, k: int = 5):
     qvec = embed_batch([query])[0]
-    with psycopg2.connect(**DB_DSN) as conn, conn.cursor() as cur:
-        cur.execute(
-            """
-            SELECT text,
+    try:
+        with psycopg2.connect(**DB_DSN) as conn, conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT text,
                    1 - (embedding <=> %s::vector) AS score
             FROM   docs
             ORDER  BY embedding <=> %s::vector
             LIMIT  %s
             """,
-            (qvec, qvec, k),
-        )
-        rows = cur.fetchall()
-    for rank, (txt, score) in enumerate(rows, 1):
-        print(f"{rank:>2}.  {score:.3f}  {txt}")
+                (qvec, qvec, k),
+            )
+            rows = cur.fetchall()
+        for rank, (txt, score) in enumerate(rows, 1):
+            print(f"{rank:>2}.  {score:.3f}  {txt}")
+    except psycopg2.Error as e:
+        print(f"❌ Error connecting to or reading from the database: {e}")
 
 # --------------------------------------------------------------------  CLI
 if __name__ == "__main__":
