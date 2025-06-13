@@ -28,11 +28,21 @@ python main.py --query "How do vectors work?"
  2.  0.844  Slack bots are fun
  3.  0.613  Bazaar builds grocery tech
 ```
+*(Note: Exact scores may vary slightly with model changes or different datasets.)*
 
 ## Files
 
 * `docker-compose.yml` – runs Postgres 16 + pgvector on ARM  
 * `init.sql` – creates extension, table, HNSW index  
-* `main.py` – embeds & queries with Gemini (`gemini-embedding-exp-03-07`)  
+* `main.py` – embeds & queries with Gemini (`text-embedding-004`). Embeddings are configured to a dimension of 768 (using `TARGET_DIM` in `main.py` and `VECTOR(768)` in `init.sql`) to reduce footprint.
 * `.env.example` – env vars to copy into `.env`  
 * `requirements.txt` – minimal Python deps
+
+## Extending this PoC
+
+This proof-of-concept can be extended in several ways:
+
+*   **Data Ingestion:** Modify `ingest()` in `main.py` to load data from other sources (e.g., different file formats, APIs, databases).
+*   **Embedding Models:** Change `MODEL_NAME` and potentially `TARGET_DIM` in `main.py` (and `init.sql` if dimension changes) to experiment with other models.
+*   **Vector Store:** Replace `psycopg2` interactions with clients for other vector databases (e.g., Pinecone, Weaviate, ChromaDB) if scaling or different features are needed.
+*   **RAG Logic:** Expand `search()` and integrate with a language model for question answering based on retrieved documents.

@@ -5,7 +5,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 CREATE TABLE IF NOT EXISTS docs (
   id         SERIAL PRIMARY KEY,
   text       TEXT,
-  embedding  VECTOR(3072)          -- Gemini default dimensionality
+  embedding  VECTOR(768)          -- Gemini default dimensionality
 );
 
 -- high-recall HNSW index
